@@ -57,6 +57,15 @@ app.post('/api/token', async (request, response) => {
   })
 
   const jwt = await token.toJwt()
+  console.log(
+    JSON.stringify({
+      displayName,
+      event: 'token.created',
+      participantId,
+      roomId,
+    }),
+  )
+
   response.json({
     expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
     livekitUrl,

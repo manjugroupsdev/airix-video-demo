@@ -22,6 +22,7 @@ const App = () => {
   const [isJoined, setIsJoined] = React.useState(false)
   const [copied, setCopied] = React.useState(false)
   const roomUrl = `${window.location.origin}/r/${roomId}`
+  const participantId = React.useMemo(() => crypto.randomUUID(), [])
 
   React.useEffect(() => {
     if (window.location.pathname !== `/r/${roomId}`) {
@@ -34,6 +35,30 @@ const App = () => {
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1800)
   }
+
+  const joinTokenProvider = React.useCallback(
+    async (input: {
+      displayName: string
+      roomId: string
+      mode?: string
+      role?: string
+      metadata?: Record<string, unknown>
+    }) => {
+      const response = await fetch('/api/token', {
+        body: JSON.stringify({ ...input, participantId }),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.message || 'Could not create a join token')
+      }
+
+      return response.json()
+    },
+    [participantId],
+  )
 
   if (isJoined) {
     return (
@@ -51,21 +76,9 @@ const App = () => {
           apiBaseUrl={window.location.origin}
           displayName={displayName || 'Guest'}
           fallback={<div className="loading-state">Preparing your room...</div>}
-          joinTokenProvider={async (input) => {
-            const response = await fetch('/api/token', {
-              body: JSON.stringify(input),
-              headers: { 'content-type': 'application/json' },
-              method: 'POST',
-            })
-
-            if (!response.ok) {
-              const error = await response.json().catch(() => ({}))
-              throw new Error(error.message || 'Could not create a join token')
-            }
-
-            return response.json()
-          }}
+          joinTokenProvider={joinTokenProvider}
           mode="group-call"
+          participantId={participantId}
           roomId={roomId}
         />
       </main>
