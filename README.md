@@ -7,7 +7,7 @@ Guest video room demo powered by the AIRIX Video SDK.
 - Shareable room URLs: `/r/:roomId`
 - Guest join with display name only
 - Token backend backed by LiveKit
-- Uses `@airix/video-react` from the AIRIX SDK release tarballs
+- Uses `@airix/video-react` from vendored AIRIX SDK release tarballs
 
 ## Local Development
 

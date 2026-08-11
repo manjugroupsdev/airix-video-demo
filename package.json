@@ -11,8 +11,8 @@
     "start": "node server/index.js"
   },
   "dependencies": {
-    "@airix/video-core": "https://github.com/manjugroupsdev/airix-video-sdk/releases/download/v0.1.1/airix-video-core-0.1.1.tgz",
-    "@airix/video-react": "https://github.com/manjugroupsdev/airix-video-sdk/releases/download/v0.1.1/airix-video-react-0.1.1.tgz",
+    "@airix/video-core": "file:vendor/airix-video-core-0.1.1.tgz",
+    "@airix/video-react": "file:vendor/airix-video-react-0.1.1.tgz",
     "@livekit/components-react": "2.9.21",
     "@livekit/components-styles": "1.2.0",
     "@vitejs/plugin-react": "latest",
