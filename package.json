@@ -1,0 +1,33 @@
+{
+  "name": "airix-video-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "server": "node server/index.js",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "@airix/video-core": "https://github.com/manjugroupsdev/airix-video-sdk/releases/download/v0.1.1/airix-video-core-0.1.1.tgz",
+    "@airix/video-react": "https://github.com/manjugroupsdev/airix-video-sdk/releases/download/v0.1.1/airix-video-react-0.1.1.tgz",
+    "@livekit/components-react": "2.9.21",
+    "@livekit/components-styles": "1.2.0",
+    "@vitejs/plugin-react": "latest",
+    "express": "latest",
+    "livekit-client": "2.20.0",
+    "livekit-server-sdk": "latest",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@types/express": "latest",
+    "@types/node": "latest",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "typescript": "5.8.3"
+  }
+}
