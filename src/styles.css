@@ -319,6 +319,21 @@ input {
   backdrop-filter: blur(14px);
 }
 
+.participant-count {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 10;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(14px);
+}
+
 .stable-grid {
   height: calc(100vh - 150px);
   padding: 8px;
@@ -441,9 +456,17 @@ input {
 
   .connection-status {
     top: 8px;
+    left: 14px;
     max-width: calc(100vw - 28px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transform: none;
+  }
+
+  .participant-count {
+    top: 42px;
+    right: auto;
+    left: 14px;
   }
 }

@@ -7,6 +7,7 @@ import {
   LiveKitRoom,
   ParticipantTile,
   RoomAudioRenderer,
+  useParticipants,
   useTracks,
 } from '@livekit/components-react'
 import { Track } from 'livekit-client'
@@ -23,10 +24,31 @@ const randomRoomId = () => {
 }
 
 const readRoomId = () => {
-  const pathnameRoom = window.location.pathname.match(/^\/r\/([^/]+)/)?.[1]
+  const pathnameRoom =
+    window.location.pathname.match(/^\/r\/([^/]+)/)?.[1] ||
+    window.location.pathname.match(/^\/([^/?#]+)/)?.[1]
   const queryRoom = new URLSearchParams(window.location.search).get('room')
 
-  return pathnameRoom || queryRoom || randomRoomId()
+  return normalizeRoomId(pathnameRoom || queryRoom || randomRoomId())
+}
+
+const normalizeRoomId = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80) || randomRoomId()
+
+const ParticipantCount = () => {
+  const participants = useParticipants()
+
+  return (
+    <span className="participant-count">
+      {participants.length} {participants.length === 1 ? 'participant' : 'participants'}
+    </span>
+  )
 }
 
 const StableRoomLayout = () => {
@@ -130,6 +152,7 @@ const StableConference = ({
       video
     >
       <div className="connection-status">{status}</div>
+      <ParticipantCount />
       <StableRoomLayout />
     </LiveKitRoom>
   )
