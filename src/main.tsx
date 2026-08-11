@@ -1,8 +1,21 @@
 import '@livekit/components-styles'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { AirixVideoConference } from '@airix/video-react'
+import {
+  ControlBar,
+  GridLayout,
+  LiveKitRoom,
+  ParticipantTile,
+  RoomAudioRenderer,
+  useTracks,
+} from '@livekit/components-react'
+import { Track } from 'livekit-client'
 import './styles.css'
+
+type JoinToken = {
+  livekitUrl: string
+  token: string
+}
 
 const randomRoomId = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(4))
@@ -14,6 +27,112 @@ const readRoomId = () => {
   const queryRoom = new URLSearchParams(window.location.search).get('room')
 
   return pathnameRoom || queryRoom || randomRoomId()
+}
+
+const StableRoomLayout = () => {
+  const tracks = useTracks(
+    [
+      { source: Track.Source.Camera, withPlaceholder: true },
+      { source: Track.Source.ScreenShare, withPlaceholder: false },
+    ],
+    { onlySubscribed: false },
+  )
+
+  return (
+    <>
+      <RoomAudioRenderer />
+      <GridLayout className="stable-grid" tracks={tracks}>
+        <ParticipantTile />
+      </GridLayout>
+      <ControlBar
+        className="stable-controls"
+        controls={{ chat: false, settings: false }}
+        saveUserChoices
+      />
+    </>
+  )
+}
+
+const StableConference = ({
+  displayName,
+  participantId,
+  roomId,
+}: {
+  displayName: string
+  participantId: string
+  roomId: string
+}) => {
+  const [joinToken, setJoinToken] = React.useState<JoinToken>()
+  const [error, setError] = React.useState('')
+  const [status, setStatus] = React.useState('Preparing your room...')
+
+  React.useEffect(() => {
+    const abortController = new AbortController()
+
+    const createToken = async () => {
+      try {
+        setError('')
+        setStatus('Preparing your room...')
+
+        const response = await fetch('/api/token', {
+          body: JSON.stringify({
+            displayName,
+            mode: 'group-call',
+            participantId,
+            roomId,
+          }),
+          headers: { 'content-type': 'application/json' },
+          method: 'POST',
+          signal: abortController.signal,
+        })
+
+        if (!response.ok) {
+          const responseError = await response.json().catch(() => ({}))
+          throw new Error(responseError.message || 'Could not create a join token')
+        }
+
+        const nextJoinToken = (await response.json()) as JoinToken
+        setJoinToken(nextJoinToken)
+        setStatus('Connecting...')
+      } catch (tokenError) {
+        if (abortController.signal.aborted) return
+        setError(tokenError instanceof Error ? tokenError.message : 'Could not join room')
+      }
+    }
+
+    void createToken()
+
+    return () => abortController.abort()
+  }, [displayName, participantId, roomId])
+
+  if (error) {
+    return <div className="loading-state" data-airix-error>{error}</div>
+  }
+
+  if (!joinToken) {
+    return <div className="loading-state">{status}</div>
+  }
+
+  return (
+    <LiveKitRoom
+      audio
+      className="stable-room"
+      connect
+      connectOptions={{ autoSubscribe: true }}
+      data-lk-theme="default"
+      onConnected={() => setStatus('Connected')}
+      onDisconnected={(reason) => setStatus(reason ? `Disconnected: ${reason}` : 'Disconnected')}
+      onError={(roomError) => setError(roomError.message)}
+      onMediaDeviceFailure={() => setError('Camera or microphone permission was blocked. Allow access and refresh.')}
+      options={{ adaptiveStream: false, dynacast: true }}
+      serverUrl={joinToken.livekitUrl}
+      token={joinToken.token}
+      video
+    >
+      <div className="connection-status">{status}</div>
+      <StableRoomLayout />
+    </LiveKitRoom>
+  )
 }
 
 const App = () => {
@@ -36,30 +155,6 @@ const App = () => {
     window.setTimeout(() => setCopied(false), 1800)
   }
 
-  const joinTokenProvider = React.useCallback(
-    async (input: {
-      displayName: string
-      roomId: string
-      mode?: string
-      role?: string
-      metadata?: Record<string, unknown>
-    }) => {
-      const response = await fetch('/api/token', {
-        body: JSON.stringify({ ...input, participantId }),
-        headers: { 'content-type': 'application/json' },
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}))
-        throw new Error(error.message || 'Could not create a join token')
-      }
-
-      return response.json()
-    },
-    [participantId],
-  )
-
   if (isJoined) {
     return (
       <main className="conference-shell">
@@ -72,12 +167,8 @@ const App = () => {
             {copied ? 'Copied' : 'Copy invite'}
           </button>
         </div>
-        <AirixVideoConference
-          apiBaseUrl={window.location.origin}
+        <StableConference
           displayName={displayName || 'Guest'}
-          fallback={<div className="loading-state">Preparing your room...</div>}
-          joinTokenProvider={joinTokenProvider}
-          mode="group-call"
           participantId={participantId}
           roomId={roomId}
         />
@@ -143,8 +234,4 @@ const App = () => {
   )
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+ReactDOM.createRoot(document.getElementById('root')!).render(<App />)
