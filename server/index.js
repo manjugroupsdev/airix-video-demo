@@ -68,7 +68,7 @@ app.post('/api/token', async (request, response) => {
 
 const distPath = path.resolve(__dirname, '../dist')
 app.use(express.static(distPath))
-app.get('*', (_request, response) => {
+app.get(/.*/, (_request, response) => {
   response.sendFile(path.join(distPath, 'index.html'))
 })
 
