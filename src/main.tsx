@@ -69,7 +69,7 @@ const StableRoomLayout = () => {
       </GridLayout>
       <ControlBar
         className="stable-controls"
-        controls={{ chat: false, settings: false }}
+        controls={{ chat: false, leave: false, settings: false }}
         saveUserChoices
       />
     </>
@@ -232,6 +232,17 @@ const App = () => {
           </div>
           <button className="secondary-button" type="button" onClick={copyInvite}>
             {copied ? 'Copied' : 'Copy invite'}
+          </button>
+          <button
+            className="leave-button"
+            type="button"
+            onClick={() => {
+              setIsJoined(false)
+              setMediaEnabled(false)
+              setPermissionMessage('')
+            }}
+          >
+            Leave
           </button>
         </div>
         <StableConference
