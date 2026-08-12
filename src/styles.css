@@ -134,6 +134,22 @@ input {
   cursor: pointer;
 }
 
+.join-form button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.permission-note {
+  margin: 0;
+  padding: 13px 14px;
+  border: 1px solid rgba(180, 83, 9, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 237, 213, 0.72);
+  color: #8a3a00;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
 .invite-row {
   display: flex;
   align-items: center;

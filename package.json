@@ -12,8 +12,8 @@
     "start": "node server/index.js"
   },
   "dependencies": {
-    "@airix/video-core": "file:vendor/airix-video-core-0.1.1.tgz",
-    "@airix/video-react": "file:vendor/airix-video-react-0.1.1.tgz",
+    "airix-video-core": "0.1.1",
+    "airix-video-react": "0.1.1",
     "@livekit/components-react": "2.9.21",
     "@livekit/components-styles": "1.2.0",
     "@vitejs/plugin-react": "latest",
