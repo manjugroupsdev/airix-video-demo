@@ -110,6 +110,7 @@ after(async () => {
   fakeEgress?.close()
   fakeS3?.close()
   await pool.query('DELETE FROM airix_video_recordings WHERE room_id = $1', [roomId]).catch(() => {})
+  await pool.query('DELETE FROM airix_video_room_owners WHERE room_id = $1 OR room_id = $2', [roomId, `${roomId}-manual`]).catch(() => {})
   await pool.end()
 })
 
@@ -179,6 +180,13 @@ test('host autoStart schedules a recording and protects its status by product', 
   const ownResponse = await fetch(path, { headers: { authorization: `Bearer ${firstKey}` } })
   assert.equal(ownResponse.status, 200)
   assert.equal((await ownResponse.json()).status, 'pending')
+
+  const foreignToken = await fetch(`${base}/rooms/${roomId}/tokens`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${secondKey}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ displayName: 'Other product' }),
+  })
+  assert.equal(foreignToken.status, 409)
 
   const viewerResponse = await fetch(`${base}/rooms/${roomId}/tokens`, {
     method: 'POST',

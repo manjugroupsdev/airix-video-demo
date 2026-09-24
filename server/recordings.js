@@ -34,6 +34,11 @@ export function installRecordingRoutes(app, requireApiKey, normalizeRoomId) {
 
   let ready
   const ensureReady = () => (ready ??= pool.query(`
+    CREATE TABLE IF NOT EXISTS airix_video_room_owners (
+      room_id text PRIMARY KEY,
+      consumer_id text NOT NULL,
+      last_seen_at timestamptz NOT NULL DEFAULT now()
+    );
     CREATE TABLE IF NOT EXISTS airix_video_recordings (
       id uuid PRIMARY KEY,
       consumer_id text NOT NULL,
@@ -51,6 +56,26 @@ export function installRecordingRoutes(app, requireApiKey, normalizeRoomId) {
       ON airix_video_recordings (room_id)
       WHERE status IN ('pending', 'starting', 'recording', 'stopping');
   `))
+
+  async function claimRoom(roomId, consumerId) {
+    await ensureReady()
+    const result = await pool.query(
+      `INSERT INTO airix_video_room_owners (room_id, consumer_id)
+       VALUES ($1, $2)
+       ON CONFLICT (room_id) DO UPDATE SET last_seen_at = now()
+       WHERE airix_video_room_owners.consumer_id = EXCLUDED.consumer_id
+       RETURNING consumer_id`, [roomId, consumerId],
+    )
+    return Boolean(result.rows[0])
+  }
+
+  async function ownerForRoom(roomId) {
+    await ensureReady()
+    const result = await pool.query(
+      'SELECT consumer_id FROM airix_video_room_owners WHERE room_id = $1', [roomId],
+    )
+    return result.rows[0]?.consumer_id || null
+  }
 
   function key(id, format) {
     return `airix-video/${id}.${format}`
@@ -102,6 +127,7 @@ export function installRecordingRoutes(app, requireApiKey, normalizeRoomId) {
 
   async function start(roomId, consumerId) {
     await ensureReady()
+    if (!await claimRoom(roomId, consumerId)) throw new Error('Room is owned by another product.')
     const id = crypto.randomUUID()
     let recordingId = id
     try {
@@ -164,6 +190,7 @@ export function installRecordingRoutes(app, requireApiKey, normalizeRoomId) {
 
   async function schedule(roomId, consumerId) {
     await ensureReady()
+    if (!await claimRoom(roomId, consumerId)) throw new Error('Room is owned by another product.')
     const result = await pool.query(
       `INSERT INTO airix_video_recordings (id, consumer_id, room_id, status)
        VALUES ($1, $2, $3, 'pending')
@@ -183,6 +210,9 @@ export function installRecordingRoutes(app, requireApiKey, normalizeRoomId) {
     const roomId = normalizeRoomId(request.params.roomId)
     if (!roomId) return response.status(400).json({ code: 'invalid_room' })
     try {
+      if (!await claimRoom(roomId, request.airixConsumer.id)) {
+        return response.status(409).json({ code: 'room_owned_by_another_product' })
+      }
       const result = await start(roomId, request.airixConsumer.id)
       return response.status(result.created ? 201 : 200).json(result.recording)
     } catch {
@@ -262,6 +292,8 @@ export function installRecordingRoutes(app, requireApiKey, normalizeRoomId) {
   return {
     start,
     schedule,
+    claimRoom,
+    ownerForRoom,
     async onParticipantJoined(roomId) {
       await ensureReady()
       const result = await pool.query(

@@ -37,6 +37,13 @@ app.post('/api/v1/rooms', requireApiKey, async (request, response) => {
   const mode = normalizeMode(request.body?.mode)
   const metadata = normalizeMetadata(request.body?.metadata)
   const joinUrl = `${getPublicDemoUrl()}/${roomId}`
+  try {
+    if (!await recordings.claimRoom(roomId, request.airixConsumer.id)) {
+      return response.status(409).json({ code: 'room_owned_by_another_product' })
+    }
+  } catch {
+    return response.status(503).json({ code: 'room_storage_unavailable' })
+  }
 
   const room = {
     createdAt: new Date().toISOString(),
@@ -75,6 +82,14 @@ app.post('/api/v1/rooms/:roomId/tokens', requireApiKey, async (request, response
   }
   if (autoRecord && role !== 'host') {
     return response.status(403).json({ code: 'host_required', message: 'Only hosts can request recording.' })
+  }
+
+  try {
+    if (!await recordings.claimRoom(roomId, request.airixConsumer.id)) {
+      return response.status(409).json({ code: 'room_owned_by_another_product' })
+    }
+  } catch {
+    return response.status(503).json({ code: 'room_storage_unavailable' })
   }
 
   try {
@@ -157,7 +172,10 @@ app.post('/api/internal/livekit-webhook', async (request, response) => {
         if (consumer) void emitConsumerWebhook(consumer, 'recording.ready', { recording: completed })
       }
     }
-    const consumer = roomId ? roomConsumers.get(roomId) : null
+    const consumerId = roomId ? await recordings.ownerForRoom(roomId) : null
+    const consumer = consumerId
+      ? getApiConsumers().find((candidate) => candidate.id === consumerId)
+      : roomId ? roomConsumers.get(roomId) : null
     if (consumer) {
       void emitConsumerWebhook(consumer, `livekit.${event.event}`, {
         livekit: serializeLiveKitEvent(event),

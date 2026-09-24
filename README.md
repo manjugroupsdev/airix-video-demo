@@ -25,6 +25,10 @@ The Vite app runs on `http://localhost:5180` and proxies `/api` to the token ser
 
 ## Production Env
 
+Postgres is required for the product API and recording ownership. Choose room
+IDs unique to your product, such as `crm-support-call-123`. Another product
+key cannot mint tokens or record an owned room.
+
 ```env
 LIVEKIT_API_KEY=airixmeet
 LIVEKIT_API_SECRET=...
