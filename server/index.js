@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
 import { AccessToken, WebhookReceiver } from 'livekit-server-sdk'
+import { installRecordingRoutes } from './recordings.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -17,6 +18,7 @@ app.use(
     },
   }),
 )
+const recordings = installRecordingRoutes(app, requireApiKey, normalizeRoomId)
 
 app.get('/api/health', (_request, response) => {
   response.json({ ok: true, service: 'airix-video-demo' })
@@ -62,6 +64,7 @@ app.post('/api/v1/rooms/:roomId/tokens', requireApiKey, async (request, response
     `guest-${crypto.randomUUID()}`
   const role = normalizeRole(request.body?.role)
   const metadata = normalizeMetadata(request.body?.metadata)
+  const autoRecord = request.body?.recording?.autoStart === true
 
   if (!roomId) {
     response.status(400).json({
@@ -69,6 +72,9 @@ app.post('/api/v1/rooms/:roomId/tokens', requireApiKey, async (request, response
       message: 'A valid roomId is required.',
     })
     return
+  }
+  if (autoRecord && role !== 'host') {
+    return response.status(403).json({ code: 'host_required', message: 'Only hosts can request recording.' })
   }
 
   try {
@@ -84,6 +90,7 @@ app.post('/api/v1/rooms/:roomId/tokens', requireApiKey, async (request, response
       role,
       roomId,
     })
+    if (autoRecord) joinToken.recording = await recordings.schedule(roomId, request.airixConsumer.id)
 
     rememberRoomConsumer(roomId, request.airixConsumer)
     response.json(joinToken)
@@ -138,6 +145,18 @@ app.post('/api/internal/livekit-webhook', async (request, response) => {
     )
 
     const roomId = normalizeRoomId(event.room?.name)
+    if (event.event === 'participant_joined' && roomId) {
+      void recordings.onParticipantJoined(roomId).catch((error) => {
+        console.error(JSON.stringify({ event: 'recording.autostart.failed', roomId, error: String(error) }))
+      })
+    }
+    if (event.event === 'egress_ended') {
+      const completed = await recordings.onEgressEnded(event)
+      if (completed) {
+        const consumer = getApiConsumers().find((candidate) => candidate.id === completed.consumerId)
+        if (consumer) void emitConsumerWebhook(consumer, 'recording.ready', { recording: completed })
+      }
+    }
     const consumer = roomId ? roomConsumers.get(roomId) : null
     if (consumer) {
       void emitConsumerWebhook(consumer, `livekit.${event.event}`, {

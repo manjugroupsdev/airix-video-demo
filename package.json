@@ -6,20 +6,23 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "server": "node server/index.js",
+    "test": "node --test server/*.test.js",
     "api-key": "node scripts/generate-api-key.js",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "start": "node server/index.js"
   },
   "dependencies": {
-    "airix-video-core": "0.1.1",
-    "airix-video-react": "0.1.1",
+    "@aws-sdk/client-s3": "^3.1139.0",
     "@livekit/components-react": "2.9.21",
     "@livekit/components-styles": "1.2.0",
     "@vitejs/plugin-react": "latest",
+    "airix-video-core": "0.1.1",
+    "airix-video-react": "0.1.1",
     "express": "latest",
     "livekit-client": "2.20.0",
     "livekit-server-sdk": "latest",
+    "pg": "^8.23.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "vite": "latest"

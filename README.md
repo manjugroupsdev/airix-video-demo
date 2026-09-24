@@ -9,7 +9,8 @@ Guest video room demo powered by the AIRIX Video SDK.
 - Token backend backed by LiveKit
 - Partner API keys for server-side room and token creation
 - Signed product webhooks for room, token, and LiveKit lifecycle events
-- Uses `@airix/video-react` from vendored AIRIX SDK release tarballs
+- Uses `airix-video-react` from vendored AIRIX SDK release tarballs
+- MP4 and MP3 room recordings with 24-hour public download links
 
 ## Local Development
 
@@ -30,6 +31,14 @@ LIVEKIT_API_SECRET=...
 PUBLIC_LIVEKIT_URL=wss://meet.theairix.com/api/livekit
 PUBLIC_DEMO_URL=https://demo.theairix.com
 AIRIX_VIDEO_API_KEYS=[{"id":"product-one","name":"Product One","keyHash":"sha256-of-ak-live-key","webhookUrl":"https://product.example.com/webhooks/airix","webhookSecret":"whsec_..."}]
+PGHOST=postgres
+PGUSER=suite
+PGPASSWORD=...
+PGDATABASE=suite
+RECORDING_S3_ENDPOINT=http://minio:9000
+RECORDING_S3_ACCESS_KEY=...
+RECORDING_S3_SECRET_KEY=...
+RECORDING_SHARE_SECRET=...
 PORT=8080
 ```
 
@@ -72,6 +81,25 @@ curl https://demo.theairix.com/api/v1/rooms/support-call-123/tokens \
   -d '{"displayName":"Manoj","participantId":"user_123","role":"host"}'
 ```
 
+Use the AIRIX SDK for calls and recording. On your product backend, use
+`airix-video-core@0.1.3` with `livekit-client@2.20.0` installed as its peer
+dependency. Add `"recording":{"autoStart":true}` to a host token request;
+the response includes a recording ID. Recording starts when the first
+participant joins. Product code does not need direct LiveKit calls.
+
+Manual control, from the product backend with its API key:
+
+```text
+POST /api/v1/rooms/{roomId}/recordings
+POST /api/v1/recordings/{recordingId}/stop
+GET  /api/v1/recordings/{recordingId}
+```
+
+When status becomes `ready`, the GET response includes `mp4Url`, `mp3Url`, and
+`publicUrlExpiresAt`. Both links work without authentication for 24 hours.
+They proxy private MinIO objects; the bucket must stay private. Media objects
+are removed after 30 days.
+
 Roles:
 
 - `host`: publish audio/video/data and subscribe
@@ -102,6 +130,7 @@ Events currently emitted:
 - `livekit.room_finished`
 - `livekit.participant_joined`
 - `livekit.participant_left`
+- `recording.ready`
 - other LiveKit events as `livekit.<event>`
 
 Verify webhook signatures in Node:
