@@ -59,11 +59,12 @@ before(async () => {
     const chunks = []
     for await (const chunk of request) chunks.push(chunk)
     const body = JSON.parse(Buffer.concat(chunks).toString())
-    egressRequests.push({ path: request.url, body })
+    const egressId = request.url.includes('StartRoomCompositeEgress')
+      ? `egress-${crypto.randomUUID()}` : body.egressId
+    egressRequests.push({ path: request.url, body, egressId })
     response.setHeader('content-type', 'application/json')
     response.end(JSON.stringify({
-      egressId: request.url.includes('StartRoomCompositeEgress')
-        ? `egress-${egressRequests.length}` : body.egressId,
+      egressId,
       status: 'EGRESS_ACTIVE',
     }))
   })
@@ -134,7 +135,7 @@ test('manual start and stop create MP4 and MP3 composite egresses', async () => 
     const webhook = await postWebhook({
       event: 'egress_ended',
       egressInfo: {
-        egressId: `egress-${index + 1}`,
+        egressId: starts[index].egressId,
         status: 'EGRESS_COMPLETE',
         fileResults: [{ filename: `airix-video/${recording.id}.${index === 0 ? 'mp4' : 'mp3'}` }],
       },
@@ -147,6 +148,8 @@ test('manual start and stop create MP4 and MP3 composite egresses', async () => 
   const ready = await readyResponse.json()
   assert.equal(ready.status, 'ready')
   assert.ok(ready.mp4Url && ready.mp3Url)
+  const ttl = new Date(ready.publicUrlExpiresAt).getTime() - Date.now()
+  assert.ok(ttl > 23.9 * 60 * 60 * 1000 && ttl <= 24 * 60 * 60 * 1000)
   const audio = await fetch(ready.mp3Url)
   assert.equal(audio.status, 200)
   assert.equal(audio.headers.get('content-type'), 'audio/mpeg')
