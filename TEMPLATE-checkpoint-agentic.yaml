@@ -1,0 +1,27 @@
+# AGENTIC CHECKPOINT
+# Minimal closeout record.
+
+task: "patch-demo-api-qs"
+gate: "escalate"
+success: "The recording API builds and passes its integration tests without production dependency advisories."
+
+evidence:
+  changed_files:
+    - "package-lock.json"
+    - "TEMPLATE-checkpoint-agentic.yaml"
+  checks:
+    - "npm ci: zero vulnerabilities"
+    - "npm run build: passed"
+    - "npm test: 2 passed against isolated PostgreSQL, fake LiveKit, and fake S3"
+    - "npm audit --omit=dev: zero vulnerabilities"
+    - "git diff --check: passed"
+  rollback: "Revert the patch commit and redeploy the prior video-demo image."
+
+risks:
+  sensitive_without_escalation: false
+  over_engineering: false
+  claim_without_evidence: false
+
+not_verified:
+  - "Real production LiveKit egress and both media URLs still need a product-key smoke test."
+next: "Merge the patch and rebuild video-demo in production."
